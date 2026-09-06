@@ -483,7 +483,7 @@ def prepare_problem():
 
     print()
     print("=" * 60)
-    print("BLACK ROCK VRP - BENCHMARK")
+    print("FLUXROUTE - BENCHMARK")
     print("=" * 60)
 
     print()

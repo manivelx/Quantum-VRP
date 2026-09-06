@@ -562,7 +562,7 @@ if __name__ == "__main__":
 
     print()
     print("=" * 60)
-    print("BLACK ROCK VRP")
+    print("FLUXROUTE")
     print("QPSO BENCHMARK")
     print("=" * 60)
 

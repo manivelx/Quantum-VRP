@@ -50,8 +50,8 @@ from traffic.dynamic_weights import DynamicWeights
 # ============================================================
 
 st.set_page_config(
-    page_title="BLACK ROCK — Quantum VRP | SIH26137",
-    page_icon="⚛️",
+    page_title="FluxRoute — Intelligent Traffic Routing | SIH26137",
+    page_icon="◈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -299,6 +299,62 @@ section[data-testid="stSidebar"] .stTextInput > div > div > input:focus {
     animation: gradientFlow 6s ease infinite;
     margin: 0;
     line-height: 1.1;
+}
+
+.brand-lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.brand-mark {
+    width: 48px;
+    height: 48px;
+    position: relative;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(0, 212, 255, 0.65);
+    border-radius: 15px 15px 15px 4px;
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.22), rgba(124, 58, 237, 0.28));
+    box-shadow: 0 0 24px rgba(0, 212, 255, 0.18), inset 0 0 18px rgba(255, 255, 255, 0.08);
+    transform: rotate(-8deg);
+}
+
+.brand-mark::after {
+    content: '';
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    right: 5px;
+    top: 5px;
+    border-radius: 50%;
+    background: var(--accent-success);
+    box-shadow: 0 0 12px var(--accent-success);
+}
+
+.brand-mark span {
+    color: var(--text-bright);
+    font-size: 1.7rem;
+    font-weight: 900;
+    line-height: 1;
+    transform: rotate(8deg);
+}
+
+.brand-wordmark {
+    color: var(--text-bright);
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    line-height: 1;
+}
+
+.brand-kicker {
+    color: var(--text-muted);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-top: 6px;
+    text-transform: uppercase;
 }
 
 @keyframes gradientFlow {
@@ -1499,7 +1555,13 @@ with header_col1:
             <div class="hero-eyebrow-dot"></div>
             SMART INDIA HACKATHON 2026
         </div>
-        <div class="hero-title">⚛️ BLACK ROCK</div>
+        <div class="brand-lockup">
+            <div class="brand-mark"><span>F</span></div>
+            <div>
+                <div class="hero-title">FLUXROUTE</div>
+                <div class="brand-kicker">Quantum Route Intelligence</div>
+            </div>
+        </div>
         <div class="hero-subtitle">
             Quantum-Inspired Intelligent Traffic Route Optimization
             in Transportation Systems Using Metaheuristic Optimization
@@ -1529,12 +1591,13 @@ with header_col2:
 
 st.sidebar.markdown("""
 <div style="text-align: center; padding: 14px 0 18px 0;">
-    <div style="font-size: 1.6rem; font-weight: 900;
-         background: linear-gradient(135deg, #00d4ff, #7c3aed);
-         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-         background-clip: text; letter-spacing: -1px;">⚛️ BLACK ROCK</div>
-    <div style="font-size: 0.65rem; color: #64748b; letter-spacing: 2.5px;
-         margin-top: 4px; text-transform: uppercase;">QUANTUM VRP PLANNER</div>
+    <div class="brand-lockup" style="justify-content: center;">
+        <div class="brand-mark" style="width: 38px; height: 38px; border-radius: 12px 12px 12px 3px;"><span style="font-size: 1.35rem;">F</span></div>
+        <div style="text-align: left;">
+            <div class="brand-wordmark">FLUXROUTE</div>
+            <div class="brand-kicker">QUANTUM ROUTE INTELLIGENCE</div>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -2585,7 +2648,7 @@ if st.session_state["route_stats"] is not None:
             st.download_button(
                 "⬇️ Route Results (CSV)",
                 data=export_df.to_csv(index=False),
-                file_name="black_rock_routes.csv",
+                file_name="fluxroute_routes.csv",
                 mime="text/csv",
                 use_container_width=True
             )
@@ -2608,7 +2671,7 @@ if st.session_state["route_stats"] is not None:
             st.download_button(
                 "⬇️ Optimization Summary (CSV)",
                 data=summary_df.to_csv(index=False),
-                file_name="black_rock_summary.csv",
+                file_name="fluxroute_summary.csv",
                 mime="text/csv",
                 use_container_width=True
             )
@@ -3035,7 +3098,7 @@ st.divider()
 
 st.markdown("""
 <div class="footer-container">
-    <div class="footer-brand">⚛️ BLACK ROCK — Quantum VRP</div>
+    <div class="footer-brand">FLUXROUTE — Quantum Route Intelligence</div>
     <div class="footer-text">
         Quantum-Inspired Intelligent Traffic Route Optimization
         in Transportation Systems Using Metaheuristic Optimization

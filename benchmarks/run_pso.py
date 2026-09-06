@@ -179,7 +179,7 @@ def prepare_problem():
 
     print()
     print("=" * 60)
-    print("BLACK ROCK VRP - PSO BENCHMARK")
+    print("FLUXROUTE - PSO BENCHMARK")
     print("=" * 60)
 
     print()

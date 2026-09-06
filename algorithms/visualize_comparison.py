@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
     print()
     print("=" * 60)
-    print("BLACK ROCK VRP - RESULT VISUALIZATION")
+    print("FLUXROUTE - RESULT VISUALIZATION")
     print("=" * 60)
 
     # --------------------------------------------------------

@@ -25,6 +25,10 @@ class DynamicWeights:
         self.base_matrix = np.asarray(
             base_distance_matrix, dtype=float
         )
+        if self.base_matrix.ndim != 2 or self.base_matrix.shape[0] != self.base_matrix.shape[1]:
+            raise ValueError("base_distance_matrix must be square")
+        if not np.all(np.isfinite(self.base_matrix)) or np.any(self.base_matrix < 0):
+            raise ValueError("base_distance_matrix must contain finite non-negative values")
         self.simulator = TrafficSimulator(seed=seed)
         self.n = self.base_matrix.shape[0]
 
@@ -119,6 +123,9 @@ class DynamicWeights:
         if location_indices is None:
             location_indices = list(range(self.n))
 
+        if len(location_indices) != self.n:
+            raise ValueError("location_indices must map every matrix location")
+
         def calc_distance(matrix, routes):
             total = 0.0
             for route in routes:
@@ -126,7 +133,11 @@ class DynamicWeights:
                     continue
                 prev = location_indices[0]
                 for c in route:
-                    node = location_indices[c] if c < len(location_indices) else c
+                    if not isinstance(c, (int, np.integer)) or not 0 <= c < len(location_indices):
+                        raise ValueError(
+                            "route customer IDs must be integer indices into location_indices"
+                        )
+                    node = location_indices[c]
                     total += matrix[prev, node]
                     prev = node
                 total += matrix[prev, location_indices[0]]

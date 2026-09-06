@@ -19,9 +19,7 @@ class TrafficSimulator:
     """
 
     def __init__(self, seed=None):
-        if seed is not None:
-            random.seed(seed)
-            np.random.seed(seed)
+        self.random = random.Random(seed)
 
     # ========================================================
     # TIME-OF-DAY TRAFFIC PROFILES
@@ -38,6 +36,13 @@ class TrafficSimulator:
         20: 1.2,  21: 1.0,  22: 0.9,  23: 0.8,
     }
 
+    WEATHER_MULTIPLIERS = {
+        "clear": 1.0,
+        "rain": 1.3,
+        "heavy_rain": 1.6,
+        "fog": 1.4,
+    }
+
     # ========================================================
     # GET TIME-OF-DAY MULTIPLIER
     # ========================================================
@@ -50,7 +55,7 @@ class TrafficSimulator:
         if hour is None:
             hour = datetime.now().hour
         hour = int(hour) % 24
-        return self.HOURLY_MULTIPLIERS.get(hour, 1.0)
+        return self.HOURLY_MULTIPLIERS[hour]
 
     # ========================================================
     # GENERATE CONGESTION EVENTS
@@ -80,8 +85,8 @@ class TrafficSimulator:
 
         for i in range(n):
             for j in range(n):
-                if i != j and random.random() < congestion_probability:
-                    severity = random.uniform(*severity_range)
+                if i != j and self.random.random() < congestion_probability:
+                    severity = self.random.uniform(*severity_range)
                     congestion_matrix[i, j] = severity
 
         return congestion_matrix
@@ -100,13 +105,13 @@ class TrafficSimulator:
         Returns:
             float multiplier
         """
-        weather_multipliers = {
-            "clear": 1.0,
-            "rain": 1.3,
-            "heavy_rain": 1.6,
-            "fog": 1.4,
-        }
-        return weather_multipliers.get(condition.lower(), 1.0)
+        if not isinstance(condition, str):
+            raise ValueError("weather condition must be a string")
+        condition = condition.lower()
+        if condition not in self.WEATHER_MULTIPLIERS:
+            supported = ", ".join(sorted(self.WEATHER_MULTIPLIERS))
+            raise ValueError(f"Unsupported weather condition; use: {supported}")
+        return self.WEATHER_MULTIPLIERS[condition]
 
     # ========================================================
     # APPLY TRAFFIC TO DISTANCE MATRIX
@@ -133,9 +138,14 @@ class TrafficSimulator:
         if dm.ndim != 2 or dm.shape[0] != dm.shape[1]:
             raise ValueError("distance_matrix must be a square 2-D array")
         n = dm.shape[0]
+        if not np.all(np.isfinite(dm)) or np.any(dm < 0):
+            raise ValueError("distance_matrix must contain finite non-negative values")
+
+        effective_hour = datetime.now().hour if hour is None else int(hour) % 24
+        weather = weather.lower() if isinstance(weather, str) else weather
 
         # Time-of-day factor
-        time_mult = self.get_time_multiplier(hour)
+        time_mult = self.get_time_multiplier(effective_hour)
 
         # Weather factor
         weather_mult = self.get_weather_multiplier(weather)
@@ -155,13 +165,15 @@ class TrafficSimulator:
         congested_count = int(np.sum(congestion > 1.05))
 
         traffic_info = {
-            "hour": hour if hour is not None else datetime.now().hour,
+            "hour": effective_hour,
             "time_multiplier": round(time_mult, 2),
             "weather": weather,
             "weather_multiplier": round(weather_mult, 2),
             "congested_segments": max(0, congested_count),
             "total_segments": n * (n - 1),
-            "avg_congestion": round(float(np.mean(congestion)), 3),
+            "avg_congestion": round(
+                float(np.mean(congestion[~np.eye(n, dtype=bool)])), 3
+            ) if n > 1 else 1.0,
         }
 
         return traffic_matrix, traffic_info

@@ -73,7 +73,7 @@ print()
 print("=" * 60)
 
 print(
-    "BLACK ROCK VRP - ALGORITHM COMPARISON"
+    "FLUXROUTE - ALGORITHM COMPARISON"
 )
 
 print("=" * 60)

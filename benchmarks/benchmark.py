@@ -43,7 +43,7 @@ class BenchmarkResult:
 
 class BenchmarkEngine:
     """
-    Common benchmark engine for BLACK ROCK VRP.
+    Common benchmark engine for FLUXROUTE.
 
     It allows different optimization algorithms
     to be evaluated using the same VRP problem.

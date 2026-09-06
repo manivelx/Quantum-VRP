@@ -1,4 +1,4 @@
-# BLACK ROCK: Intelligent Traffic Route Optimization
+# FluxRoute: Intelligent Traffic Route Optimization
 
 SIH26137 implementation for capacitated vehicle route optimization using
 quantum-inspired and classical metaheuristics. The Streamlit application
@@ -28,6 +28,17 @@ In the Route Optimization section, enable dynamic traffic conditions and
 choose the hour, weather, and congestion probability. The selected traffic
 scenario is applied to both individual optimization and the benchmark so the
 results are comparable.
+
+This is scenario-based dynamic routing: the road-cost matrix is regenerated
+when an optimization or benchmark is started, and the optimizer then produces
+a route for that traffic state. It does not yet consume a live traffic API or
+reroute a vehicle during delivery. `TrafficSimulator` provides the simulation
+boundary where live speed, incident, or weather feeds can be connected later.
+
+Traffic inputs are validated before use. Hours wrap into `0..23`, supported
+weather values are `clear`, `rain`, `heavy_rain`, and `fog`, and congestion is
+sampled on directed non-diagonal road segments. Passing `seed=42` to
+`DynamicWeights` makes a scenario reproducible.
 
 ## Run The Benchmark
 

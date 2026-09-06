@@ -323,7 +323,7 @@ def visualize_routes(
     # --------------------------------------------------------
 
     ax.set_title(
-        f"BLACK ROCK VRP - {algorithm_name}",
+        f"FLUXROUTE - {algorithm_name}",
         fontsize=14,
         fontweight="bold"
     )
@@ -364,7 +364,7 @@ if __name__ == "__main__":
     print("=" * 60)
 
     print(
-        "BLACK ROCK VRP - ROUTE VISUALIZATION"
+        "FLUXROUTE - ROUTE VISUALIZATION"
     )
 
     print("=" * 60)

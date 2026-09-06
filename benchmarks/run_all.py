@@ -84,7 +84,7 @@ subprocess.run(
 
 print()
 print("=" * 60)
-print("BLACK ROCK VRP - COMPLETE BENCHMARK")
+print("FLUXROUTE - COMPLETE BENCHMARK")
 print("=" * 60)
 
 print()
