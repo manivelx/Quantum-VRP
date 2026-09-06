@@ -1,4 +1,5 @@
 import random
+import numpy as np
 
 
 class GeneticAlgorithmVRP:
@@ -16,8 +17,9 @@ class GeneticAlgorithmVRP:
         mutation_rate=0.1,
         seed=42
     ):
-
-        self.distance_matrix = distance_matrix
+        self.distance_matrix = np.asarray(
+            distance_matrix, dtype=float
+        )
         self.demands = demands
         self.customer_indices = customer_indices
         self.depot_index = depot_index
@@ -30,17 +32,15 @@ class GeneticAlgorithmVRP:
         self.mutation_rate = mutation_rate
 
         random.seed(seed)
+        np.random.seed(seed)
 
     # ========================================================
     # CREATE INITIAL SOLUTION
     # ========================================================
 
     def create_solution(self):
-
         solution = self.customer_indices.copy()
-
         random.shuffle(solution)
-
         return solution
 
     # ========================================================
@@ -48,14 +48,11 @@ class GeneticAlgorithmVRP:
     # ========================================================
 
     def decode(self, solution):
-
         routes = []
-
         current_route = []
         current_load = 0
 
         for customer in solution:
-
             demand = self.demands[customer]
 
             if (
@@ -63,22 +60,17 @@ class GeneticAlgorithmVRP:
                 and current_load + demand
                 > self.vehicle_capacity
             ):
-
                 routes.append(current_route)
-
                 current_route = []
                 current_load = 0
 
             current_route.append(customer)
-
             current_load += demand
 
         if current_route:
-
             routes.append(current_route)
 
         feasible = len(routes) <= self.num_vehicles
-
         return routes, feasible
 
     # ========================================================
@@ -86,28 +78,21 @@ class GeneticAlgorithmVRP:
     # ========================================================
 
     def route_distance(self, route):
-
         if not route:
-            return 0
+            return 0.0
 
-        distance = 0
-
+        distance = 0.0
         previous = self.depot_index
 
         for customer in route:
-
             distance += self.distance_matrix[
-                previous,
-                customer
+                previous, customer
             ]
-
             previous = customer
 
         distance += self.distance_matrix[
-            previous,
-            self.depot_index
+            previous, self.depot_index
         ]
-
         return distance
 
     # ========================================================
@@ -115,7 +100,6 @@ class GeneticAlgorithmVRP:
     # ========================================================
 
     def fitness(self, solution):
-
         routes, feasible = self.decode(solution)
 
         distance = sum(
@@ -124,11 +108,8 @@ class GeneticAlgorithmVRP:
         )
 
         penalty = 0
-
         if not feasible:
-
             excess = len(routes) - self.num_vehicles
-
             penalty += excess * 100000
 
         return distance + penalty
@@ -138,34 +119,23 @@ class GeneticAlgorithmVRP:
     # ========================================================
 
     def selection(self, population):
-
         tournament = random.sample(
             population,
             min(3, len(population))
         )
-
-        return min(
-            tournament,
-            key=self.fitness
-        )
+        return min(tournament, key=self.fitness)
 
     # ========================================================
     # CROSSOVER
     # ========================================================
 
     def crossover(self, parent1, parent2):
-
         size = len(parent1)
-
         start, end = sorted(
-            random.sample(
-                range(size),
-                2
-            )
+            random.sample(range(size), 2)
         )
 
         child = [None] * size
-
         child[start:end] = parent1[start:end]
 
         remaining = [
@@ -175,13 +145,9 @@ class GeneticAlgorithmVRP:
         ]
 
         pointer = 0
-
         for i in range(size):
-
             if child[i] is None:
-
                 child[i] = remaining[pointer]
-
                 pointer += 1
 
         return child
@@ -191,19 +157,13 @@ class GeneticAlgorithmVRP:
     # ========================================================
 
     def mutate(self, solution):
-
         if random.random() < self.mutation_rate:
-
             i, j = random.sample(
-                range(len(solution)),
-                2
+                range(len(solution)), 2
             )
-
             solution[i], solution[j] = (
-                solution[j],
-                solution[i]
+                solution[j], solution[i]
             )
-
         return solution
 
     # ========================================================
@@ -211,82 +171,50 @@ class GeneticAlgorithmVRP:
     # ========================================================
 
     def optimize(self):
-
         population = [
             self.create_solution()
-            for _ in range(
-                self.population_size
-            )
+            for _ in range(self.population_size)
         ]
 
         best_solution = min(
-            population,
-            key=self.fitness
+            population, key=self.fitness
         )
+        best_fitness = self.fitness(best_solution)
 
-        best_fitness = self.fitness(
-            best_solution
-        )
+        # Convergence history
+        history = [best_fitness]
 
-        for iteration in range(
-            self.max_iterations
-        ):
-
+        for iteration in range(self.max_iterations):
             new_population = []
 
-            # Keep best solution
-            new_population.append(
-                best_solution.copy()
-            )
+            # Elitism — keep best solution
+            new_population.append(best_solution.copy())
 
             while len(new_population) < self.population_size:
-
-                parent1 = self.selection(
-                    population
-                )
-
-                parent2 = self.selection(
-                    population
-                )
-
-                child = self.crossover(
-                    parent1,
-                    parent2
-                )
-
-                child = self.mutate(
-                    child
-                )
-
-                new_population.append(
-                    child
-                )
+                parent1 = self.selection(population)
+                parent2 = self.selection(population)
+                child = self.crossover(parent1, parent2)
+                child = self.mutate(child)
+                new_population.append(child)
 
             population = new_population
 
             current_best = min(
-                population,
-                key=self.fitness
+                population, key=self.fitness
             )
-
-            current_fitness = self.fitness(
-                current_best
-            )
+            current_fitness = self.fitness(current_best)
 
             if current_fitness < best_fitness:
-
-                best_solution = (
-                    current_best.copy()
-                )
-
+                best_solution = current_best.copy()
                 best_fitness = current_fitness
 
-        routes, feasible = self.decode(
-            best_solution
-        )
+            history.append(best_fitness)
+
+        routes, feasible = self.decode(best_solution)
 
         return (
             routes,
             best_fitness,
-            self.max_iterations
+            self.max_iterations,
+            history
         )

@@ -8,13 +8,6 @@ class PSO_VRP:
     Capacitated Vehicle Routing Problem.
 
     Uses random-key representation.
-
-    Example particle:
-
-        [0.72, 0.11, 0.93, 0.35, 0.52]
-
-    Sorting the values creates the
-    customer visiting order.
     """
 
     def __init__(
@@ -32,12 +25,9 @@ class PSO_VRP:
         social=1.5,
         seed=42
     ):
-
         self.distance_matrix = np.asarray(
-            distance_matrix,
-            dtype=float
+            distance_matrix, dtype=float
         )
-
         self.demands = demands
         self.customer_indices = customer_indices
         self.depot_index = depot_index
@@ -62,21 +52,17 @@ class PSO_VRP:
     # ========================================================
 
     def decode(self, position):
-
         order = np.argsort(position)
-
         ordered_customers = [
             self.customer_indices[i]
             for i in order
         ]
 
         routes = []
-
         current_route = []
         current_load = 0.0
 
         for customer in ordered_customers:
-
             demand = self.demands[customer]
 
             if (
@@ -84,9 +70,7 @@ class PSO_VRP:
                 and current_load + demand
                 > self.vehicle_capacity
             ):
-
                 routes.append(current_route)
-
                 current_route = []
                 current_load = 0.0
 
@@ -97,7 +81,6 @@ class PSO_VRP:
             routes.append(current_route)
 
         feasible = len(routes) <= self.num_vehicles
-
         return routes, feasible
 
     # ========================================================
@@ -105,28 +88,21 @@ class PSO_VRP:
     # ========================================================
 
     def route_distance(self, route):
-
         if not route:
             return 0.0
 
         distance = 0.0
-
         previous = self.depot_index
 
         for customer in route:
-
             distance += self.distance_matrix[
-                previous,
-                customer
+                previous, customer
             ]
-
             previous = customer
 
         distance += self.distance_matrix[
-            previous,
-            self.depot_index
+            previous, self.depot_index
         ]
-
         return distance
 
     # ========================================================
@@ -134,7 +110,6 @@ class PSO_VRP:
     # ========================================================
 
     def fitness(self, position):
-
         routes, feasible = self.decode(position)
 
         total_distance = sum(
@@ -143,14 +118,10 @@ class PSO_VRP:
         )
 
         penalty = 0.0
-
         if not feasible:
-
             excess_routes = (
-                len(routes)
-                - self.num_vehicles
+                len(routes) - self.num_vehicles
             )
-
             penalty += (
                 excess_routes
                 * self.vehicle_capacity
@@ -164,176 +135,76 @@ class PSO_VRP:
     # ========================================================
 
     def optimize(self):
-
         if self.dimension == 0:
+            return [], 0.0, 0, []
 
-            return [], 0.0, 0
-
-        # ----------------------------------------------------
-        # INITIALIZE PARTICLES
-        # ----------------------------------------------------
-
+        # Initialize particles
         particles = np.random.uniform(
-            0,
-            1,
-            (
-                self.num_particles,
-                self.dimension
-            )
+            0, 1,
+            (self.num_particles, self.dimension)
         )
 
-        # ----------------------------------------------------
-        # INITIAL VELOCITIES
-        # ----------------------------------------------------
-
+        # Initial velocities
         velocities = np.random.uniform(
-            -0.1,
-            0.1,
-            (
-                self.num_particles,
-                self.dimension
-            )
+            -0.1, 0.1,
+            (self.num_particles, self.dimension)
         )
 
-        # ----------------------------------------------------
-        # PERSONAL BEST
-        # ----------------------------------------------------
-
+        # Personal best
         personal_best = particles.copy()
-
         personal_best_fitness = np.array([
-            self.fitness(particle)
-            for particle in particles
+            self.fitness(p) for p in particles
         ])
 
-        # ----------------------------------------------------
-        # GLOBAL BEST
-        # ----------------------------------------------------
+        # Global best
+        best_index = np.argmin(personal_best_fitness)
+        global_best = personal_best[best_index].copy()
+        global_best_fitness = personal_best_fitness[best_index]
 
-        best_index = np.argmin(
-            personal_best_fitness
-        )
+        # Convergence history
+        history = [global_best_fitness]
 
-        global_best = personal_best[
-            best_index
-        ].copy()
+        for iteration in range(self.max_iterations):
+            for i in range(self.num_particles):
+                r1 = np.random.random(self.dimension)
+                r2 = np.random.random(self.dimension)
 
-        global_best_fitness = (
-            personal_best_fitness[
-                best_index
-            ]
-        )
-
-        # ----------------------------------------------------
-        # ITERATIONS
-        # ----------------------------------------------------
-
-        for iteration in range(
-            self.max_iterations
-        ):
-
-            for i in range(
-                self.num_particles
-            ):
-
-                r1 = np.random.random(
-                    self.dimension
-                )
-
-                r2 = np.random.random(
-                    self.dimension
-                )
-
-                # --------------------------------------------
-                # UPDATE VELOCITY
-                # --------------------------------------------
-
+                # Update velocity
                 velocities[i] = (
-                    self.inertia
-                    * velocities[i]
-
-                    + self.cognitive
-                    * r1
-                    * (
-                        personal_best[i]
-                        - particles[i]
+                    self.inertia * velocities[i]
+                    + self.cognitive * r1 * (
+                        personal_best[i] - particles[i]
                     )
-
-                    + self.social
-                    * r2
-                    * (
-                        global_best
-                        - particles[i]
+                    + self.social * r2 * (
+                        global_best - particles[i]
                     )
                 )
 
-                # --------------------------------------------
-                # UPDATE POSITION
-                # --------------------------------------------
+                # Update position
+                particles[i] = particles[i] + velocities[i]
+                particles[i] = np.clip(particles[i], 0, 1)
 
-                particles[i] = (
-                    particles[i]
-                    + velocities[i]
-                )
+                # Fitness
+                current_fitness = self.fitness(particles[i])
 
-                particles[i] = np.clip(
-                    particles[i],
-                    0,
-                    1
-                )
+                # Personal best update
+                if current_fitness < personal_best_fitness[i]:
+                    personal_best[i] = particles[i].copy()
+                    personal_best_fitness[i] = current_fitness
 
-                # --------------------------------------------
-                # FITNESS
-                # --------------------------------------------
+                # Global best update
+                if current_fitness < global_best_fitness:
+                    global_best = particles[i].copy()
+                    global_best_fitness = current_fitness
 
-                current_fitness = self.fitness(
-                    particles[i]
-                )
+            history.append(global_best_fitness)
 
-                # --------------------------------------------
-                # PERSONAL BEST UPDATE
-                # --------------------------------------------
-
-                if (
-                    current_fitness
-                    < personal_best_fitness[i]
-                ):
-
-                    personal_best[i] = (
-                        particles[i].copy()
-                    )
-
-                    personal_best_fitness[i] = (
-                        current_fitness
-                    )
-
-                # --------------------------------------------
-                # GLOBAL BEST UPDATE
-                # --------------------------------------------
-
-                if (
-                    current_fitness
-                    < global_best_fitness
-                ):
-
-                    global_best = (
-                        particles[i].copy()
-                    )
-
-                    global_best_fitness = (
-                        current_fitness
-                    )
-
-        # ====================================================
-        # FINAL ROUTES
-        # ====================================================
-
-        routes, feasible = self.decode(
-            global_best
-        )
+        # Final routes
+        routes, feasible = self.decode(global_best)
 
         return (
             routes,
             global_best_fitness,
-            self.max_iterations
+            self.max_iterations,
+            history
         )

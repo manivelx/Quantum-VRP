@@ -354,89 +354,55 @@ class ACOVRP:
     def optimize(self):
 
         if self.dimension == 0:
-
-            return [], 0.0, 0
+            return [], 0.0, 0, []
 
         best_routes = None
         best_distance = float("inf")
+
+        # Convergence history
+        history = []
 
         # ====================================================
         # MAIN ACO LOOP
         # ====================================================
 
-        for iteration in range(
-            self.max_iterations
-        ):
+        for iteration in range(self.max_iterations):
 
             iteration_best_routes = None
-            iteration_best_distance = float(
-                "inf"
-            )
+            iteration_best_distance = float("inf")
 
-            # ------------------------------------------------
             # Create solutions for all ants
-            # ------------------------------------------------
+            for _ in range(self.num_ants):
+                routes = self.build_ant_solution()
+                distance = self.fitness(routes)
 
-            for _ in range(
-                self.num_ants
-            ):
+                if distance < iteration_best_distance:
+                    iteration_best_distance = distance
+                    iteration_best_routes = routes
 
-                routes = (
-                    self.build_ant_solution()
-                )
-
-                distance = self.fitness(
-                    routes
-                )
-
-                if (
-                    distance
-                    < iteration_best_distance
-                ):
-
-                    iteration_best_distance = (
-                        distance
-                    )
-
-                    iteration_best_routes = (
-                        routes
-                    )
-
-                if (
-                    distance
-                    < best_distance
-                ):
-
+                if distance < best_distance:
                     best_distance = distance
-
                     best_routes = [
                         route.copy()
                         for route in routes
                     ]
 
-            # ------------------------------------------------
-            # Evaporate
-            # ------------------------------------------------
+            # Track convergence
+            history.append(best_distance)
 
+            # Evaporate
             self.evaporate_pheromone()
 
-            # ------------------------------------------------
             # Update using iteration best
-            # ------------------------------------------------
-
             if iteration_best_routes is not None:
-
                 self.deposit_pheromone(
                     iteration_best_routes,
                     iteration_best_distance
                 )
 
-        # ====================================================
-        # RETURN BEST SOLUTION
-        # ====================================================
-
         return (
             best_routes,
             best_distance,
-            self.max_iterations
+            self.max_iterations,
+            history
         )

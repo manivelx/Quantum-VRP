@@ -27,6 +27,10 @@ sys.path.insert(
 from algorithms.qpso import QPSO_VRP
 from algorithms.pso import PSO_VRP
 from algorithms.ga import GeneticAlgorithmVRP
+from algorithms.aco import ACOVRP
+from algorithms.simulated_annealing import SimulatedAnnealingVRP
+from algorithms.tabu_search import TabuSearchVRP
+from algorithms.alns import ALNS_VRP
 
 from benchmarks.benchmark import BenchmarkEngine
 
@@ -192,6 +196,63 @@ def run_ga():
     return optimizer.optimize()
 
 
+def run_aco():
+    optimizer = ACOVRP(
+        distance_matrix=distance_matrix,
+        demands=demands,
+        customer_indices=customer_indices,
+        depot_index=0,
+        vehicle_capacity=VEHICLE_CAPACITY,
+        num_vehicles=NUM_VEHICLES,
+        num_ants=NUM_PARTICLES,
+        max_iterations=MAX_ITERATIONS,
+        seed=SEED
+    )
+    return optimizer.optimize()
+
+
+def run_sa():
+    optimizer = SimulatedAnnealingVRP(
+        distance_matrix=distance_matrix,
+        demands=demands,
+        customer_indices=customer_indices,
+        depot_index=0,
+        vehicle_capacity=VEHICLE_CAPACITY,
+        num_vehicles=NUM_VEHICLES,
+        max_iterations=MAX_ITERATIONS,
+        seed=SEED
+    )
+    return optimizer.optimize()
+
+
+def run_tabu():
+    optimizer = TabuSearchVRP(
+        distance_matrix=distance_matrix,
+        demands=demands,
+        customer_indices=customer_indices,
+        depot_index=0,
+        vehicle_capacity=VEHICLE_CAPACITY,
+        num_vehicles=NUM_VEHICLES,
+        max_iterations=MAX_ITERATIONS,
+        seed=SEED
+    )
+    return optimizer.optimize()
+
+
+def run_alns():
+    optimizer = ALNS_VRP(
+        distance_matrix=distance_matrix,
+        demands=demands,
+        customer_indices=customer_indices,
+        depot_index=0,
+        vehicle_capacity=VEHICLE_CAPACITY,
+        num_vehicles=NUM_VEHICLES,
+        max_iterations=MAX_ITERATIONS,
+        seed=SEED
+    )
+    return optimizer.optimize()
+
+
 # ============================================================
 # CREATE BENCHMARK ENGINE
 # ============================================================
@@ -245,6 +306,22 @@ ga_result = engine.run_algorithm(
     "Genetic Algorithm",
     run_ga
 )
+
+print()
+print("Running Ant Colony Optimization...")
+engine.run_algorithm("Ant Colony Optimization", run_aco)
+
+print()
+print("Running Simulated Annealing...")
+engine.run_algorithm("Simulated Annealing", run_sa)
+
+print()
+print("Running Tabu Search...")
+engine.run_algorithm("Tabu Search", run_tabu)
+
+print()
+print("Running ALNS...")
+engine.run_algorithm("ALNS", run_alns)
 
 
 # ============================================================

@@ -9,6 +9,7 @@ import osmnx as ox
 
 from graph.osm_loader import load_city_graph
 from graph.location_snapper import snap_locations
+from algorithms.qpso import QPSO_VRP as EnhancedQPSO_VRP
 
 
 # ============================================================
@@ -740,7 +741,7 @@ def run_single_benchmark(
     seed
 ):
 
-    optimizer = QPSO_VRP(
+    optimizer = EnhancedQPSO_VRP(
 
         distance_matrix=distance_matrix,
 
@@ -766,9 +767,8 @@ def run_single_benchmark(
 
     start_time = time.time()
 
-    routes, best_distance, iterations = (
-        optimizer.optimize()
-    )
+    result = optimizer.optimize()
+    routes, best_distance, iterations = result[:3]
 
     elapsed = (
         time.time()

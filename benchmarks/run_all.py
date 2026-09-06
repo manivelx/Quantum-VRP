@@ -88,10 +88,9 @@ print("BLACK ROCK VRP - COMPLETE BENCHMARK")
 print("=" * 60)
 
 print()
-print("QPSO        : COMPLETED")
-print("PSO         : COMPLETED")
-print("GA          : COMPLETED")
-print("COMPARISON  : COMPLETED")
+print("QPSO, PSO, GA : COMPLETED")
+print("ACO, SA, Tabu, ALNS : COMPLETED")
+print("7-algorithm comparison : COMPLETED")
 
 print()
 print("All benchmark operations completed successfully.")

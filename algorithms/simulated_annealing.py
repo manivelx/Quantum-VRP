@@ -364,124 +364,61 @@ class SimulatedAnnealingVRP:
     def optimize(self):
 
         if not self.customer_indices:
+            return [], 0.0, 0, []
 
-            return [], 0.0, 0
-
-        # ----------------------------------------------------
         # Initial solution
-        # ----------------------------------------------------
+        current_solution = self.create_initial_solution()
+        current_fitness = self.fitness(current_solution)
 
-        current_solution = (
-            self.create_initial_solution()
-        )
-
-        current_fitness = self.fitness(
-            current_solution
-        )
-
-        best_solution = self.copy_solution(
-            current_solution
-        )
-
+        best_solution = self.copy_solution(current_solution)
         best_fitness = current_fitness
 
-        temperature = (
-            self.initial_temperature
-        )
+        temperature = self.initial_temperature
 
-        # ----------------------------------------------------
+        # Convergence history
+        history = [best_fitness]
+
         # Simulated Annealing loop
-        # ----------------------------------------------------
+        for iteration in range(self.max_iterations):
 
-        for iteration in range(
-            self.max_iterations
-        ):
+            neighbor = self.generate_neighbor(current_solution)
+            neighbor_fitness = self.fitness(neighbor)
 
-            neighbor = (
-                self.generate_neighbor(
-                    current_solution
-                )
-            )
+            delta = neighbor_fitness - current_fitness
 
-            neighbor_fitness = (
-                self.fitness(neighbor)
-            )
-
-            delta = (
-                neighbor_fitness
-                - current_fitness
-            )
-
-            # ------------------------------------------------
             # Accept better solution
-            # ------------------------------------------------
-
             if delta < 0:
-
                 current_solution = neighbor
+                current_fitness = neighbor_fitness
 
-                current_fitness = (
-                    neighbor_fitness
-                )
-
-            # ------------------------------------------------
             # Accept worse solution probabilistically
-            # ------------------------------------------------
-
             else:
-
                 if temperature > 0:
-
-                    probability = math.exp(
-                        -delta / temperature
-                    )
-
+                    probability = math.exp(-delta / temperature)
                 else:
-
                     probability = 0.0
 
                 if random.random() < probability:
-
                     current_solution = neighbor
+                    current_fitness = neighbor_fitness
 
-                    current_fitness = (
-                        neighbor_fitness
-                    )
-
-            # ------------------------------------------------
             # Update global best
-            # ------------------------------------------------
+            if current_fitness < best_fitness:
+                best_solution = self.copy_solution(current_solution)
+                best_fitness = current_fitness
 
-            if (
-                current_fitness
-                < best_fitness
-            ):
-
-                best_solution = (
-                    self.copy_solution(
-                        current_solution
-                    )
-                )
-
-                best_fitness = (
-                    current_fitness
-                )
-
-            # ------------------------------------------------
             # Cool temperature
-            # ------------------------------------------------
+            temperature *= self.cooling_rate
 
-            temperature *= (
-                self.cooling_rate
-            )
-
-            # Prevent numerical problems
             if temperature < 1e-10:
-
                 temperature = 1e-10
+
+            # Track convergence
+            history.append(best_fitness)
 
         return (
             best_solution,
             best_fitness,
-            self.max_iterations
+            self.max_iterations,
+            history
         )

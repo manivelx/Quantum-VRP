@@ -87,14 +87,20 @@ class BenchmarkEngine:
 
         if isinstance(result, tuple):
 
-            if len(result) == 3:
+            if len(result) == 4:
+
+                routes, distance, iterations, history = result
+
+            elif len(result) == 3:
 
                 routes, distance, iterations = result
+                history = []
 
             elif len(result) == 2:
 
                 routes, distance = result
                 iterations = 0
+                history = []
 
             else:
 
