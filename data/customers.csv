@@ -1,0 +1,12 @@
+id,type,latitude,longitude,demand
+DEPOT_01,depot,18.5362,73.8958,0
+CUST_01,customer,18.5395,73.8948,35
+CUST_02,customer,18.5338,73.8912,50
+CUST_03,customer,18.5421,73.8995,25
+CUST_04,customer,18.5287,73.8970,40
+CUST_05,customer,18.5450,73.8895,30
+CUST_06,customer,18.5315,73.9030,45
+CUST_07,customer,18.5482,73.9010,20
+CUST_08,customer,18.5255,73.8925,55
+CUST_09,customer,18.5380,73.9065,30
+CUST_10,customer,18.5500,73.8940,35

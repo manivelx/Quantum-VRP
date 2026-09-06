@@ -1,0 +1,4 @@
+Algorithm,Total Distance (km),Runtime (seconds),Iterations,Vehicles Used
+QPSO,7.2,0.0434,100,2
+PSO,7.91,0.0299,100,2
+Genetic Algorithm,7.2,0.0563,100,2
