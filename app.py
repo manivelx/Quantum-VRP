@@ -2129,7 +2129,11 @@ with rc1:
 with rc2:
     num_vehicles = st.number_input(
         "Number of Vehicles",
+<<<<<<< HEAD
         min_value=1, value=3, step=1
+=======
+        min_value=1, max_value=1000, value=2, step=1
+>>>>>>> cc658f3b446a75e733d9224d8cc0d92cd0bd2a3e
     )
 
 with rc3:
