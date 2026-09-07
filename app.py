@@ -36,13 +36,12 @@ from graph.graph_builder import describe_graph, validate_graph
 from graph.location_snapper import snap_locations
 
 from algorithms.qpso import QPSO_VRP
+from algorithms.hybrid_qpso_ga import HybridQPSOGA
 from algorithms.pso import PSO_VRP
 from algorithms.ga import GeneticAlgorithmVRP
-from algorithms.aco import ACOVRP
-from algorithms.simulated_annealing import SimulatedAnnealingVRP
-from algorithms.tabu_search import TabuSearchVRP
-from algorithms.alns import ALNS_VRP
 from traffic.dynamic_weights import DynamicWeights
+from vrp.multi_objective import build_multi_objective_matrix, evaluate_route_objectives
+from navigation.rerouting import simulate_road_closure, route_uses_segment
 
 
 # ============================================================
@@ -1318,12 +1317,41 @@ def get_safe_navigation_path(G, start_node, end_node):
 
 
 def get_path_coordinates(G, path):
+    """Return map coordinates, including curved OSM edge geometry."""
     coordinates = []
-    for node in path:
+    if not path:
+        return coordinates
+
+    def add_coordinate(coordinate):
+        coordinate = [float(coordinate[0]), float(coordinate[1])]
+        if not coordinates or coordinates[-1] != coordinate:
+            coordinates.append(coordinate)
+
+    for index, node in enumerate(path):
         try:
-            lat = float(G.nodes[node]["y"])
-            lon = float(G.nodes[node]["x"])
-            coordinates.append([lat, lon])
+            if index == 0:
+                add_coordinate((G.nodes[node]["y"], G.nodes[node]["x"]))
+
+            if index >= len(path) - 1:
+                continue
+
+            next_node = path[index + 1]
+            edge_data = G.get_edge_data(node, next_node)
+            if edge_data is None and G.is_directed():
+                edge_data = G.to_undirected().get_edge_data(node, next_node)
+
+            if edge_data:
+                if isinstance(G, (nx.MultiGraph, nx.MultiDiGraph)):
+                    edge_data = min(
+                        edge_data.values(),
+                        key=lambda data: float(data.get("length", float("inf")))
+                    )
+                geometry = edge_data.get("geometry")
+                if geometry is not None:
+                    for lon, lat in geometry.coords:
+                        add_coordinate((lat, lon))
+
+            add_coordinate((G.nodes[next_node]["y"], G.nodes[next_node]["x"]))
         except Exception:
             continue
     return coordinates
@@ -1930,25 +1958,36 @@ if st.session_state["routes"] is not None:
             sn, en = loc_nodes[si], loc_nodes[ei]
 
             nav_path, path_type = get_safe_navigation_path(G, sn, en)
-            if not nav_path:
-                continue
+            if nav_path:
+                coords = get_path_coordinates(G, nav_path)
+            else:
+                # Keep unresolved legs visible rather than silently dropping them.
+                coords = get_path_coordinates(G, [sn, en])
+                path_type = "fallback"
 
-            coords = get_path_coordinates(G, nav_path)
-            if not coords:
+            if len(coords) < 2:
                 continue
 
             rd = get_path_distance(G, nav_path)
-            plabel = {"directed": "OSM directed", "undirected": "OSM fallback"}.get(
+            plabel = {
+                "directed": "OSM directed",
+                "undirected": "OSM fallback",
+                "fallback": "Direct connector (no road path found)"
+            }.get(
                 path_type, "No road"
             )
 
             folium.PolyLine(
                 locations=coords,
                 color=color,
-                weight=5,
-                opacity=0.85,
-                dash_array="",
-                tooltip=f"🚚 Vehicle {v_num + 1}",
+                weight=5 if path_type != "fallback" else 3,
+                opacity=0.85 if path_type != "fallback" else 0.7,
+                dash_array=None if path_type != "fallback" else "8, 8",
+                tooltip=(
+                    f"🚚 Vehicle {v_num + 1}"
+                    if path_type != "fallback"
+                    else f"⚠️ Vehicle {v_num + 1} — direct connector"
+                ),
                 popup=folium.Popup(
                     f"""<div style="width:240px;font-family:Inter,Arial,sans-serif;
                     background:#0a0a1e;color:#e2e8f0;padding:14px;border-radius:12px;
@@ -2081,6 +2120,7 @@ with rc1:
         "Optimization Algorithm",
         [
             "QPSO — Quantum-Inspired PSO",
+            "Hybrid QPSO + GA",
             "PSO — Particle Swarm Optimization",
             "GA — Genetic Algorithm"
         ]
@@ -2089,7 +2129,7 @@ with rc1:
 with rc2:
     num_vehicles = st.number_input(
         "Number of Vehicles",
-        min_value=1, max_value=100, value=2, step=1
+        min_value=1, value=3, step=1
     )
 
 with rc3:
@@ -2116,6 +2156,20 @@ with traffic_col3:
         "Congestion probability", 0.0, 1.0, 0.15, 0.05
     )
 
+multi_objective = st.checkbox(
+    "Use multi-objective cost (distance + time + congestion)",
+    value=True,
+    help="Balance route length, traffic-adjusted time, and congestion exposure."
+)
+
+objective_col1, objective_col2, objective_col3 = st.columns(3)
+with objective_col1:
+    distance_weight = st.slider("Distance weight", 0.0, 1.0, 0.45, 0.05)
+with objective_col2:
+    time_weight = st.slider("Traffic-time weight", 0.0, 1.0, 0.35, 0.05)
+with objective_col3:
+    congestion_weight = st.slider("Congestion weight", 0.0, 1.0, 0.20, 0.05)
+
 # ---- Default parameters ----
 num_particles = 30
 max_iterations = 100
@@ -2127,7 +2181,7 @@ population_size = 30
 mutation_rate = 0.1
 
 # ---- Algorithm Configuration ----
-if algorithm == "QPSO — Quantum-Inspired PSO":
+if algorithm in ["QPSO — Quantum-Inspired PSO", "Hybrid QPSO + GA"]:
     with st.expander("⚛️ QPSO Configuration", expanded=True):
         qc1, qc2, qc3 = st.columns(3)
         with qc1:
@@ -2136,6 +2190,13 @@ if algorithm == "QPSO — Quantum-Inspired PSO":
             max_iterations = st.number_input("Iterations", 10, 1000, 100, 10)
         with qc3:
             beta = st.slider("Contraction-Expansion β", 0.1, 1.5, 0.75, 0.05)
+    if algorithm == "Hybrid QPSO + GA":
+        with st.expander("🧬 GA Refinement Configuration", expanded=True):
+            hc1, hc2 = st.columns(2)
+            with hc1:
+                population_size = st.number_input("GA Population Size", 5, 200, 30, 5)
+            with hc2:
+                mutation_rate = st.slider("GA Mutation Rate", 0.01, 1.0, 0.1, 0.01)
 
 elif algorithm == "PSO — Particle Swarm Optimization":
     with st.expander("🌀 PSO Configuration", expanded=True):
@@ -2160,7 +2221,7 @@ else:
             mutation_rate = st.slider("Mutation Rate", 0.01, 1.0, 0.1, 0.01)
 
 # ---- Action Buttons ----
-btn1, btn2 = st.columns([5, 1])
+btn1, btn2, btn3 = st.columns([4, 1, 1])
 
 with btn1:
     optimize_button = st.button(
@@ -2170,6 +2231,14 @@ with btn1:
 
 with btn2:
     clear_button = st.button("🗑️ Clear", use_container_width=True)
+
+with btn3:
+    reroute_button = st.button(
+        "🔀 Re-route",
+        use_container_width=True,
+        disabled=st.session_state["routes"] is None,
+        help="Close the first segment of the current route and optimize again."
+    )
 
 if clear_button:
     for k in ["routes", "route_stats", "optimization_result",
@@ -2182,14 +2251,17 @@ if clear_button:
 # OPTIMIZATION
 # ============================================================
 
-if optimize_button:
+if optimize_button or reroute_button:
     try:
+        previous_routes = st.session_state.get("routes")
         (location_names, location_nodes, demands,
          customer_indices, distance_matrix, td) = prepare_vrp_problem(
             customers_df, snapped_locations, G,
             num_vehicles, vehicle_capacity
         )
 
+        base_distance_matrix = distance_matrix.copy()
+        traffic_matrix = base_distance_matrix.copy()
         if traffic_enabled:
             distance_matrix, traffic_info = DynamicWeights(
                 distance_matrix, seed=42
@@ -2203,6 +2275,29 @@ if optimize_button:
                 f"{traffic_weather}, {traffic_info['congested_segments']} "
                 "congested segments"
             )
+            traffic_matrix = distance_matrix.copy()
+
+        if multi_objective:
+            distance_matrix = build_multi_objective_matrix(
+                base_distance_matrix,
+                traffic_matrix,
+                distance_weight=float(distance_weight),
+                time_weight=float(time_weight),
+                congestion_weight=float(congestion_weight),
+            )
+
+        incident = None
+        if reroute_button and previous_routes:
+            first_route = list(previous_routes[0])
+            if first_route:
+                incident = (0, first_route[0])
+                distance_matrix = simulate_road_closure(
+                    distance_matrix, incident[0], incident[1]
+                )
+                st.warning(
+                    f"Simulated closure: DEPOT → {location_names[incident[1]]}. "
+                    "Re-optimizing around the incident."
+                )
 
         progress = st.progress(0, text="⚡ Preparing road network...")
 
@@ -2221,6 +2316,21 @@ if optimize_button:
                 num_particles=int(num_particles),
                 max_iterations=int(max_iterations),
                 beta=float(beta),
+                seed=42
+            )
+        elif algorithm == "Hybrid QPSO + GA":
+            optimizer = HybridQPSOGA(
+                distance_matrix=distance_matrix,
+                demands=demands,
+                customer_indices=customer_indices,
+                depot_index=0,
+                vehicle_capacity=int(vehicle_capacity),
+                num_vehicles=int(num_vehicles),
+                num_particles=int(num_particles),
+                population_size=int(population_size),
+                max_iterations=int(max_iterations),
+                beta=float(beta),
+                mutation_rate=float(mutation_rate),
                 seed=42
             )
         elif algorithm == "PSO — Particle Swarm Optimization":
@@ -2296,7 +2406,12 @@ if optimize_button:
             "algorithm": algorithm,
             "distance": float(best_distance),
             "runtime": runtime,
-            "iterations": int(iterations)
+            "iterations": int(iterations),
+            "objectives": evaluate_route_objectives(
+                routes, base_distance_matrix, traffic_matrix
+            ),
+            "multi_objective": multi_objective,
+            "incident": incident,
         }
 
         # Route statistics
@@ -2340,6 +2455,7 @@ if optimize_button:
             f"Total distance: {best_distance:.2f} km",
             icon="🚀"
         )
+        st.rerun()
 
     except Exception as e:
         st.error(f"❌ Route optimization failed: {e}")
@@ -2420,6 +2536,20 @@ if st.session_state["route_stats"] is not None:
             <div class="metric-label">Iterations</div>
         </div>
         """, unsafe_allow_html=True)
+
+    objectives = result_info.get("objectives")
+    if objectives:
+        st.caption("Multi-objective route profile: lower is better for every metric")
+        objective_metrics = st.columns(3)
+        objective_metrics[0].metric(
+            "Road distance", f"{objectives['distance']:.2f} km"
+        )
+        objective_metrics[1].metric(
+            "Traffic-adjusted time", f"{objectives['time']:.2f} cost"
+        )
+        objective_metrics[2].metric(
+            "Congestion exposure", f"{objectives['congestion']:.2f} penalty"
+        )
 
     # ---- TABS for results ----
     tab_convergence, tab_vehicles, tab_routes, tab_export = st.tabs([
@@ -2688,7 +2818,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="section-subtitle">Compare seven route optimizers on the same traffic-aware VRP problem</div>',
+st.markdown('<div class="section-subtitle">Compare eight route optimizers on the same traffic-aware VRP problem</div>',
             unsafe_allow_html=True)
 
 benchmark_button = st.button(
@@ -2704,6 +2834,8 @@ if benchmark_button:
             num_vehicles, vehicle_capacity
         )
 
+        base_distance_matrix = distance_matrix.copy()
+        traffic_matrix = base_distance_matrix.copy()
         if traffic_enabled:
             distance_matrix, traffic_info = DynamicWeights(
                 distance_matrix, seed=42
@@ -2711,6 +2843,16 @@ if benchmark_button:
                 hour=traffic_hour,
                 weather=traffic_weather,
                 congestion_probability=congestion_probability
+            )
+            traffic_matrix = distance_matrix.copy()
+
+        if multi_objective:
+            distance_matrix = build_multi_objective_matrix(
+                base_distance_matrix,
+                traffic_matrix,
+                distance_weight=float(distance_weight),
+                time_weight=float(time_weight),
+                congestion_weight=float(congestion_weight),
             )
 
         def run_qpso():
@@ -2722,6 +2864,19 @@ if benchmark_button:
                 num_particles=int(num_particles),
                 max_iterations=int(max_iterations),
                 beta=float(beta), seed=42
+            )
+            return opt.optimize()
+
+        def run_hybrid_qpso_ga():
+            opt = HybridQPSOGA(
+                distance_matrix=distance_matrix, demands=demands,
+                customer_indices=customer_indices, depot_index=0,
+                vehicle_capacity=int(vehicle_capacity),
+                num_vehicles=int(num_vehicles),
+                num_particles=int(num_particles),
+                population_size=int(population_size),
+                max_iterations=int(max_iterations),
+                beta=float(beta), mutation_rate=float(mutation_rate), seed=42
             )
             return opt.optimize()
 
@@ -2751,46 +2906,6 @@ if benchmark_button:
             )
             return opt.optimize()
 
-        def run_aco():
-            opt = ACOVRP(
-                distance_matrix=distance_matrix, demands=demands,
-                customer_indices=customer_indices, depot_index=0,
-                vehicle_capacity=int(vehicle_capacity),
-                num_vehicles=int(num_vehicles), num_ants=int(num_particles),
-                max_iterations=int(max_iterations), seed=42
-            )
-            return opt.optimize()
-
-        def run_sa():
-            opt = SimulatedAnnealingVRP(
-                distance_matrix=distance_matrix, demands=demands,
-                customer_indices=customer_indices, depot_index=0,
-                vehicle_capacity=int(vehicle_capacity),
-                num_vehicles=int(num_vehicles),
-                max_iterations=int(max_iterations), seed=42
-            )
-            return opt.optimize()
-
-        def run_tabu():
-            opt = TabuSearchVRP(
-                distance_matrix=distance_matrix, demands=demands,
-                customer_indices=customer_indices, depot_index=0,
-                vehicle_capacity=int(vehicle_capacity),
-                num_vehicles=int(num_vehicles),
-                max_iterations=int(max_iterations), seed=42
-            )
-            return opt.optimize()
-
-        def run_alns():
-            opt = ALNS_VRP(
-                distance_matrix=distance_matrix, demands=demands,
-                customer_indices=customer_indices, depot_index=0,
-                vehicle_capacity=int(vehicle_capacity),
-                num_vehicles=int(num_vehicles),
-                max_iterations=int(max_iterations), seed=42
-            )
-            return opt.optimize()
-
         bm = BenchmarkEngine()
 
         progress = st.progress(0, text="⚡ Starting benchmark...")
@@ -2798,23 +2913,14 @@ if benchmark_button:
         progress.progress(10, text="⚛️ Running QPSO...")
         bm.run_algorithm("QPSO", run_qpso)
 
-        progress.progress(40, text="🌀 Running PSO...")
+        progress.progress(25, text="⚛️🧬 Running Hybrid QPSO + GA...")
+        bm.run_algorithm("Hybrid QPSO + GA", run_hybrid_qpso_ga)
+
+        progress.progress(45, text="🌀 Running PSO...")
         bm.run_algorithm("PSO", run_pso)
 
         progress.progress(70, text="🧬 Running Genetic Algorithm...")
         bm.run_algorithm("GA", run_ga)
-
-        progress.progress(78, text="🐜 Running ACO...")
-        bm.run_algorithm("ACO", run_aco)
-
-        progress.progress(84, text="🌡️ Running Simulated Annealing...")
-        bm.run_algorithm("SA", run_sa)
-
-        progress.progress(92, text="Running Tabu Search...")
-        bm.run_algorithm("Tabu Search", run_tabu)
-
-        progress.progress(96, text="🧩 Running ALNS...")
-        bm.run_algorithm("ALNS", run_alns)
 
         progress.progress(100, text="✅ Benchmark completed!")
 
@@ -2878,9 +2984,8 @@ if st.session_state.get("benchmark_results") is not None:
     with tab_bm_chart:
         # Distance comparison
         algo_colors = {
-            "QPSO": "#00d4ff", "PSO": "#7c3aed", "GA": "#00ff88",
-            "ACO": "#ffaa00", "SA": "#ff6b9d", "Tabu Search": "#38bdf8",
-            "ALNS": "#06d6a0"
+            "QPSO": "#00d4ff", "Hybrid QPSO + GA": "#a855f7",
+            "PSO": "#7c3aed", "GA": "#00ff88"
         }
 
         fig_dist = go.Figure()

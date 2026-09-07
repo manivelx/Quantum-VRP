@@ -25,12 +25,9 @@ sys.path.insert(
 # ============================================================
 
 from algorithms.qpso import QPSO_VRP
+from algorithms.hybrid_qpso_ga import HybridQPSOGA
 from algorithms.pso import PSO_VRP
 from algorithms.ga import GeneticAlgorithmVRP
-from algorithms.aco import ACOVRP
-from algorithms.simulated_annealing import SimulatedAnnealingVRP
-from algorithms.tabu_search import TabuSearchVRP
-from algorithms.alns import ALNS_VRP
 
 from benchmarks.benchmark import BenchmarkEngine
 
@@ -41,7 +38,7 @@ from benchmarks.run_qpso import prepare_problem
 # CONFIGURATION
 # ============================================================
 
-NUM_VEHICLES = 2
+NUM_VEHICLES = 3
 
 VEHICLE_CAPACITY = 200
 
@@ -126,6 +123,24 @@ def run_qpso():
     return optimizer.optimize()
 
 
+def run_hybrid_qpso_ga():
+    optimizer = HybridQPSOGA(
+        distance_matrix=distance_matrix,
+        demands=demands,
+        customer_indices=customer_indices,
+        depot_index=0,
+        vehicle_capacity=VEHICLE_CAPACITY,
+        num_vehicles=NUM_VEHICLES,
+        num_particles=NUM_PARTICLES,
+        population_size=POPULATION_SIZE,
+        max_iterations=MAX_ITERATIONS,
+        beta=BETA,
+        mutation_rate=MUTATION_RATE,
+        seed=SEED
+    )
+    return optimizer.optimize()
+
+
 # ============================================================
 # PSO
 # ============================================================
@@ -196,63 +211,6 @@ def run_ga():
     return optimizer.optimize()
 
 
-def run_aco():
-    optimizer = ACOVRP(
-        distance_matrix=distance_matrix,
-        demands=demands,
-        customer_indices=customer_indices,
-        depot_index=0,
-        vehicle_capacity=VEHICLE_CAPACITY,
-        num_vehicles=NUM_VEHICLES,
-        num_ants=NUM_PARTICLES,
-        max_iterations=MAX_ITERATIONS,
-        seed=SEED
-    )
-    return optimizer.optimize()
-
-
-def run_sa():
-    optimizer = SimulatedAnnealingVRP(
-        distance_matrix=distance_matrix,
-        demands=demands,
-        customer_indices=customer_indices,
-        depot_index=0,
-        vehicle_capacity=VEHICLE_CAPACITY,
-        num_vehicles=NUM_VEHICLES,
-        max_iterations=MAX_ITERATIONS,
-        seed=SEED
-    )
-    return optimizer.optimize()
-
-
-def run_tabu():
-    optimizer = TabuSearchVRP(
-        distance_matrix=distance_matrix,
-        demands=demands,
-        customer_indices=customer_indices,
-        depot_index=0,
-        vehicle_capacity=VEHICLE_CAPACITY,
-        num_vehicles=NUM_VEHICLES,
-        max_iterations=MAX_ITERATIONS,
-        seed=SEED
-    )
-    return optimizer.optimize()
-
-
-def run_alns():
-    optimizer = ALNS_VRP(
-        distance_matrix=distance_matrix,
-        demands=demands,
-        customer_indices=customer_indices,
-        depot_index=0,
-        vehicle_capacity=VEHICLE_CAPACITY,
-        num_vehicles=NUM_VEHICLES,
-        max_iterations=MAX_ITERATIONS,
-        seed=SEED
-    )
-    return optimizer.optimize()
-
-
 # ============================================================
 # CREATE BENCHMARK ENGINE
 # ============================================================
@@ -274,6 +232,10 @@ qpso_result = engine.run_algorithm(
     "QPSO",
     run_qpso
 )
+
+print()
+print("Running Hybrid QPSO + GA...")
+engine.run_algorithm("Hybrid QPSO + GA", run_hybrid_qpso_ga)
 
 
 # ============================================================
@@ -307,23 +269,6 @@ ga_result = engine.run_algorithm(
     run_ga
 )
 
-print()
-print("Running Ant Colony Optimization...")
-engine.run_algorithm("Ant Colony Optimization", run_aco)
-
-print()
-print("Running Simulated Annealing...")
-engine.run_algorithm("Simulated Annealing", run_sa)
-
-print()
-print("Running Tabu Search...")
-engine.run_algorithm("Tabu Search", run_tabu)
-
-print()
-print("Running ALNS...")
-engine.run_algorithm("ALNS", run_alns)
-
-
 # ============================================================
 # DISPLAY RESULTS
 # ============================================================
@@ -340,6 +285,17 @@ print("=" * 60)
 
 results_df = engine.results_dataframe()
 
+results_df["Distance Rank"] = results_df[
+    "Total Distance (km)"
+].rank(method="min", ascending=True).astype(int)
+results_df["Runtime Rank"] = results_df[
+    "Runtime (seconds)"
+].rank(method="min", ascending=True).astype(int)
+results_df["Distance/Runtime"] = (
+    results_df["Total Distance (km)"]
+    / results_df["Runtime (seconds)"].clip(lower=0.000001)
+).round(2)
+
 print()
 
 print(
@@ -354,6 +310,10 @@ print(
 # ============================================================
 
 best = engine.best_result()
+fastest = min(
+    engine.get_results(),
+    key=lambda result: result.runtime
+)
 
 
 print()
@@ -397,6 +357,13 @@ print(
     f"Vehicles  : "
     f"{len(best.routes)}"
 )
+
+print()
+print("FASTEST ALGORITHM")
+print("=" * 60)
+print(f"Algorithm : {fastest.algorithm_name}")
+print(f"Runtime   : {fastest.runtime:.4f} seconds")
+print(f"Distance  : {fastest.distance:.3f} km")
 
 
 # ============================================================

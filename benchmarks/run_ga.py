@@ -34,7 +34,7 @@ def run_ga():
 
         vehicle_capacity=200,
 
-        num_vehicles=2,
+        num_vehicles=3,
 
         population_size=30,
 

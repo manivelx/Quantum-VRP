@@ -89,8 +89,8 @@ print("=" * 60)
 
 print()
 print("QPSO, PSO, GA : COMPLETED")
-print("ACO, SA, Tabu, ALNS : COMPLETED")
-print("7-algorithm comparison : COMPLETED")
+print("Hybrid QPSO + GA comparison : COMPLETED")
+print("4-algorithm comparison : COMPLETED")
 
 print()
 print("All benchmark operations completed successfully.")

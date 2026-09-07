@@ -40,7 +40,7 @@ PLACE = "Koregaon Park, Pune, India"
 
 CUSTOMER_FILE = "data/customers.csv"
 
-NUM_VEHICLES = 2
+NUM_VEHICLES = 3
 
 VEHICLE_CAPACITY = 200
 

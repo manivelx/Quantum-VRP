@@ -417,6 +417,6 @@ class QPSO_VRP:
         return (
             routes,
             global_best_fitness,
-            len(history) - 1,
+            self.max_iterations,
             history
         )

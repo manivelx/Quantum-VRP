@@ -11,8 +11,13 @@ conditions that change the effective edge costs.
 	refinement, and stagnation restarts.
 - Dynamic traffic weighting from time of day, weather, and reproducible
 	congestion events.
-- Shared benchmark across QPSO, PSO, genetic algorithm, ACO, simulated
-	annealing, tabu search, and ALNS.
+- Hybrid QPSO + GA optimizer, combining quantum exploration with genetic
+	refinement.
+- Multi-objective routing that balances distance, traffic-adjusted time, and
+	congestion exposure.
+- Incident response mode that closes a live route segment and re-optimizes
+	around the simulated road closure.
+- Shared benchmark across QPSO, hybrid QPSO + GA, PSO, and genetic algorithm.
 - Capacity-aware CVRP routes with depot return and route-distance reporting.
 
 ## Run The App
@@ -42,8 +47,10 @@ sampled on directed non-diagonal road segments. Passing `seed=42` to
 
 ## Run The Benchmark
 
-The comparison runner executes all seven algorithms on the same road-distance
-matrix and writes `benchmark_comparison.csv` plus the best route output:
+The comparison runner executes all four algorithms on the same road-distance
+matrix and writes `benchmark_comparison.csv` plus the best route output. The
+comparison reports distance rank, runtime rank, and distance-per-runtime so
+route quality is not confused with raw execution speed:
 
 ```powershell
 python -m benchmarks.compare_algorithms
@@ -57,7 +64,7 @@ history.
 
 ## Project Layout
 
-- `algorithms/`: QPSO, PSO, GA, ACO, SA, Tabu Search, and ALNS.
+- `algorithms/`: QPSO, hybrid QPSO + GA, PSO, and GA.
 - `traffic/`: traffic simulation and dynamic edge-weight management.
 - `benchmarks/`: reusable benchmark engine and runners.
 - `graph/`: road graph loading, snapping, and routing.
