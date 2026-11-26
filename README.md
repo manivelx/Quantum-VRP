@@ -62,6 +62,17 @@ and the final solution is refined with 2-opt. The benchmark engine accepts
 both legacy three-value optimizer results and four-value results containing a
 history.
 
+### Sample benchmark results
+
+From `benchmark_comparison.csv` (single run, 100 iterations, 3 vehicles):
+
+| Algorithm | Distance (km) | Runtime (s) |
+|---|---|---|
+| QPSO | 10.25 | 0.0655 |
+| Hybrid QPSO + GA | 10.25 | 0.2165 |
+| PSO | 11.13 | 0.0435 |
+| Genetic Algorithm | 10.46 | 0.0955 |
+
 ## Project Layout
 
 - `algorithms/`: QPSO, hybrid QPSO + GA, PSO, and GA.
