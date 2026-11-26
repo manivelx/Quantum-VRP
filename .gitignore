@@ -81,3 +81,13 @@ htmlcov/
 *.tmp
 *.temp
 *.bak
+# ============================================================
+# Generated results
+# ============================================================
+
+results/
+cache/
+best_route*.csv
+best_route_map.png
+route_visualization.png
+benchmark_*.csv

@@ -217,8 +217,59 @@ class QPSO_VRP:
     # 2-OPT LOCAL SEARCH
     # ========================================================
 
+    def _is_symmetric(self):
+        """True when d(i, j) == d(j, i), cached after the first call."""
+        if not hasattr(self, "_symmetric_cache"):
+            self._symmetric_cache = bool(
+                np.allclose(
+                    self.distance_matrix,
+                    self.distance_matrix.T,
+                )
+            )
+        return self._symmetric_cache
+
     def _two_opt_route(self, route):
-        """Apply 2-opt improvement to a single route."""
+        """
+        Apply 2-opt improvement to a single route.
+
+        With a symmetric distance matrix each candidate move is scored
+        from the four edges it changes (O(1)) instead of re-summing the
+        whole route (O(n)), which is what made large instances and the
+        hybrid optimizer very slow. Asymmetric matrices fall back to the
+        exact full-recompute version.
+        """
+        if len(route) < 3:
+            return route
+
+        if not self._is_symmetric():
+            return self._two_opt_route_exact(route)
+
+        d = self.distance_matrix
+        depot = self.depot_index
+        padded = [depot] + list(route) + [depot]
+        size = len(route)
+        improved = True
+
+        while improved:
+            improved = False
+            for i in range(size - 1):
+                a, b = padded[i], padded[i + 1]
+                for j in range(i + 2, size):
+                    c, e = padded[j + 1], padded[j + 2]
+                    delta = (
+                        d[a, c] + d[b, e] - d[a, b] - d[c, e]
+                    )
+                    if delta < -1e-10:
+                        padded[i + 1:j + 2] = padded[i + 1:j + 2][::-1]
+                        improved = True
+                        break
+                if improved:
+                    break
+
+        return padded[1:-1]
+
+    def _two_opt_route_exact(self, route):
+        """Reference 2-opt that recomputes full route distance."""
         if len(route) < 3:
             return route
 
