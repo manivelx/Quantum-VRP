@@ -38,7 +38,7 @@ import networkx as nx
 
 PLACE = "Koregaon Park, Pune, India"
 
-CUSTOMER_FILE = "data/customers.csv"
+CUSTOMER_FILE = "data/customers_stress_1000.csv"
 
 NUM_VEHICLES = 3
 

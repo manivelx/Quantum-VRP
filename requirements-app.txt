@@ -1,0 +1,10 @@
+# Extra packages for the Streamlit map app (app.py)
+-r requirements.txt
+streamlit
+osmnx
+networkx
+matplotlib
+folium
+streamlit-folium
+plotly
+requests
